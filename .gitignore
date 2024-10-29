@@ -1,3 +1,14 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+*.ipr
+*.iws
+
+# User-specific files
+*.user
+*.user.xml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
