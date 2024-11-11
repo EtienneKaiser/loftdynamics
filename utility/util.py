@@ -20,6 +20,7 @@ def iterate_data():
     pairs = {}
 
     for file in files:
+        
         if file.endswith('.parquet') or file.endswith('.json'):
             uuid = file.split('-')[0]
             if uuid not in pairs:
@@ -37,7 +38,7 @@ def assign_meaningful_flight_names(pairs):
     loaded_var_names = []
     idx = 0
 
-    for uuid, pair in tqdm(pairs.items(), desc="Loading flight data", unit="flight"):
+    for uuid, pair in tqdm(pairs.items(), desc="Assigning flight names", unit="flight"):
         if 'parquet' in pair and 'json' in pair:
             var_name = const.ARR_FLIGHT_NAMES[idx]
             loaded_var_names.append(var_name)
@@ -45,16 +46,17 @@ def assign_meaningful_flight_names(pairs):
 
             parquet_path = os.path.join(const.DATA_DIR, pair['parquet'])
             json_path = os.path.join(const.DATA_DIR, pair['json'])
-            data_parquet = load_parquet_file(parquet_path)
-            data_json = load_json_file(json_path)
 
-            data_dict[var_name] = {'parquet': data_parquet, 'json': data_json}
+            data_dict[var_name] = {
+                'parquet_path': parquet_path,
+                'json_path': json_path
+            }
 
             if idx >= len(const.ARR_FLIGHT_NAMES):
                 print("Reached variable name limit.")
                 break
 
-    print("Loaded data variables:", loaded_var_names)
+    print("Assigned flight names:", loaded_var_names)
     return data_dict
 
 def get_flight_data():

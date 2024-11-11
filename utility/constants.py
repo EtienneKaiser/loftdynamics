@@ -1,4 +1,4 @@
-DATA_DIR = 'data'
+DATA_DIR = './data'
 CACHE_FILE = './cachedir/flight_data_cache.joblib'
 
 ARR_FLIGHT_NAMES = [

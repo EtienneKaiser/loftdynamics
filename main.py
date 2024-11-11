@@ -3,7 +3,7 @@ import joblib
 import pandas as pd
 
 from utility.constants import CACHE_FILE
-from utility.util import get_flight_data
+from utility.util import get_flight_data, load_json_file, load_parquet_file
 
 flight_data_cache = None
 
@@ -27,24 +27,18 @@ def load_data():
     return flight_data_cache
 
 if __name__ == '__main__':
+
     flights = load_data()
     print("Loaded all flight data successfully.")
-
-    # TODO This is just a rough creation of dataframes,
-    #  but till now we can load all data efficiently!
-    print("Keys in loaded flight data:", flights.keys())
-
-    dataframes = {}
-    for flight_name, data in flights.items():
-        json_df = pd.DataFrame(data['json'])
-        parquet_df = data['parquet']
-
-        dataframes[flight_name] = {
-            'json': json_df,
-            'parquet': parquet_df
-        }
-
+    
+    #TODO get the data you need
+    # here's an example
+    for flight_name, paths in flights.items():
         print(f"\nData for flight '{flight_name}':")
+
+        json_df = pd.DataFrame(load_json_file(paths['json_path']))
+        parquet_df = load_parquet_file(paths['parquet_path'])
+
         print("JSON DataFrame:")
         print(json_df.head())
 
