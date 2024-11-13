@@ -172,6 +172,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-cachedir/
-data/
+data_process/cache/
+data_process/data/
+data_process/train_data/
 lody/
