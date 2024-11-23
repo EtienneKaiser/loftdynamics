@@ -175,4 +175,6 @@ cython_debug/
 data_process/cache/
 data_process/data/
 data_process/train_data/
+data_process/test_data/
+data_process/validate_data/
 lody/
