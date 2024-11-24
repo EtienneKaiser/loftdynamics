@@ -91,6 +91,7 @@ def load_parquet_file(parquet_path):
     return df
 
 def process_parquet_file(df):
+    df = df.convert_dtypes()
     pd.set_option('future.no_silent_downcasting', True)
     state_desc_df = pd.read_csv('./state_descriptions_analysis.csv')
 
@@ -107,7 +108,6 @@ def process_parquet_file(df):
     df = df.dropna(axis=1, how='all')
 
     #fill up the none/ nan values
-    #df = df.fillna(method='ffill')
     df = df.ffill().infer_objects(copy=False)
 
     return df
@@ -140,15 +140,19 @@ def convert_value(val):
             return val
         elif isinstance(val, (list, np.ndarray)):  # take the mean of arrays
             return np.mean([v for v in val if isinstance(v, (int, float))])
-        elif isinstance(val, str):  # ignore text
-            return float('NaN')
         else:
             return float('NaN')
 
 
 def columns_to_scalar(df):
-    df_cleaned = df.map(convert_value)
-    return df_cleaned.dropna(axis=1)
+    numeric_df = df.select_dtypes(include=[np.number, bool])
+    numeric_df = numeric_df.astype(float)  # convert bools to 0/1
+
+    non_numeric_df = df.select_dtypes(exclude=[np.number, bool])
+    non_numeric_processed = non_numeric_df.map(convert_value)
+    processed_df = pd.concat([numeric_df, non_numeric_processed], axis=1)
+
+    return processed_df.dropna(axis=1, how='all')
 
 
 def get_common_columns(datadir, configuration): # [(folder, ids)]
@@ -187,9 +191,9 @@ def add_row_label(data, datapath, id):
         start, end, label = row['startTimestamp'], row['endTimeStamp'], row['maneuver']
         
         idx = (data.index.get_level_values('TimeStamp') >= start) & (data.index.get_level_values('TimeStamp') <= end)
-        data.loc[idx, 'Label'] = label
+        data.loc[idx, 'Label'] = str(label).lower()
     
-    data.loc[data['Label'].isnull(), 'Label'] = "No Maneuver"
+    data.loc[data['Label'].isnull(), 'Label'] = "no maneuver"
     return data
 
 
