@@ -25,9 +25,15 @@ def plot_alpha_scores(alpha_scores):
 
 
 def load_and_prepare_data(file_path):
-    df = pd.read_parquet(file_path)
-    y = np.array(df['Label'].reset_index(drop=True).str.lower()) # remove the multi-index
-    X = df.drop(columns=['Label'])
+    df = pd.read_csv(file_path)
+    y = np.array(df['most_frequent_label'].reset_index(drop=True).str.lower()) 
+    X = df.drop(columns=['most_frequent_label'])
+
+    # Remove non-numeric columns
+    non_numeric_columns = ['start_time', 'end_time', 'most_frequent_label']
+    numeric_columns = [col for col in df.columns if col not in non_numeric_columns]
+
+    X = df[numeric_columns].reset_index(drop=True)
 
     return X, y
 
@@ -45,50 +51,58 @@ def fit_model_with_files(model, files, classes):
     return X.columns
 
 
-def calculate_maneuver_recall(data_path, flight_id, data, predictions, threshhold = 0.8):
+def calculate_maneuver_recall(data_path, flight_id, data, predictions, threshhold=0.8):
     maneuvers_path = os.path.join(data_path, f"{flight_id}.csv")
     maneuvers = pd.read_csv(maneuvers_path)
 
-    # removing 'No maneuvers' entries
-    maneuvers = maneuvers.loc[maneuvers['maneuver'] != "no maneuver"]
+    # Ensure 'most_frequent_label' column is present
+    if 'most_frequent_label' not in maneuvers.columns:
+        raise KeyError(f"'most_frequent_label' column not found in CSV: {maneuvers_path}")
     
-    maneuvers['startTimestamp'] = pd.to_datetime(maneuvers['startTimestamp'])
-    maneuvers['endTimeStamp'] = pd.to_datetime(maneuvers['endTimeStamp'])
+    # Remove entries with "No Maneuver"
+    maneuvers = maneuvers.loc[maneuvers['most_frequent_label'].str.lower() != "no maneuver"]
+    
+    # Convert start_time and end_time to datetime
+    maneuvers['start_time'] = pd.to_datetime(maneuvers['start_time']).view(np.int64)  # Convert to int64
+    maneuvers['end_time'] = pd.to_datetime(maneuvers['end_time']).view(np.int64)
 
-    timestamps = np.array(data.index.get_level_values(0))
+    # Align timestamps and predictions
+    timestamps = data.index.get_level_values(0).values.astype(np.int64)
     timestamp_predictions = list(zip(timestamps, predictions))
 
     maneuver_scores = {}
-    grouped_maneuvers = maneuvers.groupby('maneuver')
+    grouped_maneuvers = maneuvers.groupby('most_frequent_label')
 
     total_detected = 0
     total_maneuvers = len(maneuvers)
-    
+
     for label, current_maneuvers in grouped_maneuvers:
         detected_count = 0
         label = label.lower()
 
         # Iterate over each maneuver in the ground truth
         for _, maneuver in current_maneuvers.iterrows():
-            start_time = maneuver['startTimestamp'].tz_localize("UTC")
-            end_time = maneuver['endTimeStamp'].tz_localize("UTC")
+            start_time = maneuver['start_time']
+            end_time = maneuver['end_time']
 
-            duration_s = (end_time - start_time).total_seconds()
+            duration_s = (end_time - start_time) / 1e9  # Convert nanoseconds to seconds
             detection_threshold_s = threshhold * duration_s
-            
+
+            # Get predictions within the time range
             maneuver_predictions = [t for t in timestamp_predictions if start_time <= t[0] <= end_time]
-
             correct_predictions = [p for p in maneuver_predictions if p[1] == label]
-            current_datetimes = pd.Series([p[0] for p in maneuver_predictions])
-            correct_duration = len(correct_predictions) * (current_datetimes.diff().dt.total_seconds().median())
 
-            if correct_duration >= detection_threshold_s:
-                detected_count += 1
-        
-        total_label_maneuvers = len(maneuvers)
+            # Calculate duration of correct predictions
+            current_datetimes = pd.Series([p[0] for p in maneuver_predictions])
+            if not current_datetimes.empty:
+                correct_duration = len(correct_predictions) * (current_datetimes.diff().mean() / 1e9)
+                if correct_duration >= detection_threshold_s:
+                    detected_count += 1
+
+        total_label_maneuvers = len(current_maneuvers)
         maneuver_scores[label] = detected_count / total_label_maneuvers if total_label_maneuvers > 0 else 0.0
         total_detected += detected_count
-    
+
     overall_recall = total_detected / total_maneuvers if total_maneuvers > 0 else 0.0
-    
+
     return maneuver_scores, overall_recall
