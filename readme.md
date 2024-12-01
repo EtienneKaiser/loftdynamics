@@ -1,4 +1,10 @@
-# Maneuver Detection for Loft Dynamics
+"new-models" branch is reflecting the latest developments. When pulling the files, make sure you have the data folder in the root directory.
+
+---
+
+The following applies to "master" branch and could be used for Project extension using Python instead of Jupyter
+
+## Maneuver Detection for Loft Dynamics
 
 The partner of this project is the Dübendorf-based company Loft Dynamics, 
 who develops and produces the world’s only EASA- and FAA-qualified VR helicopter pilot training simulators.
